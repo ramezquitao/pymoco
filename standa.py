@@ -50,22 +50,32 @@ class Standa:
 
 
     def stop(self):
+        '''
+        Stop the displacement
+        '''
         Data=()
         self.udev.controlMsg(requestType=0x40,request=0x07,buffer=Data,value=0,index=0,timeout=1000)
     
     def move(self,POS=0,div=8):#L=128,I=0,div=8):#Velocidad 625 , divisor: 8,4,2,1, carro:serial
+        '''
+        Move to a given position
+        '''
         Data=(0xf9,0xc0,int(math.log(div)))
         I=POS & 0xFFFF
         L=(POS/0x10000) & 0xFFFF
         self.udev.controlMsg(requestType=0x40, request=0x80,buffer=Data,value=L, index=I,timeout= 1000)
 
     def get_trailer(self):
+        '''
+        Check if the limit switches are pressed
+        '''
         bytesToGet=512
         data=self.udev.controlMsg(requestType=0xC0, request=0x82,buffer=bytesToGet,value=0x001, index=0,timeout= 1000)
         return (data[7]>>6)&3
         
     def _fpark(self):
-        """Move slowly the translation stage until the trailers are not pressed"""
+        """If any of the limit switches is pressed, move slowly the translation
+         stage until they are not"""
         
         T=self.get_trailer()
         # The trailer close to the motor is pressed
@@ -84,7 +94,12 @@ class Standa:
             
 
     def park(self, mside=True):
+        '''
+        Park the translation stage, and set the current position to 0
         
+        if mside is true, park the translation stage to the motor side, else
+        park it to the opposite side.
+        '''
         #Move away from the trailers
         self._fpark()
         
@@ -112,11 +127,17 @@ class Standa:
 
 
     def get_state(self):
+        '''
+        Return the translation stage state.
+        '''
         bytesToGet=512
         data=self.udev.controlMsg(requestType=0xC0, request=0x82,buffer=bytesToGet,value=0x00, index=0,timeout= 1000) 
         return (data[6]>>3 & 0x02) |  data[7]&0x01 
 
-    def test(self):
+    def wait(self):
+        '''
+        Wait intil the translation stage stops
+        '''
         while(1):    
             if self.get_state()&1==0: 
                     break
