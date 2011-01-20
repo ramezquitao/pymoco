@@ -1,6 +1,8 @@
 import math
 import usb
 
+nan=float('nan')
+
 
 
 
@@ -47,6 +49,8 @@ class Standa:
                         udev = dev.open()
                         if serial==get_serial(udev):
                             self.udev=udev
+        
+        self.pos=nan #Current position is unknown
 
 
     def stop(self):
