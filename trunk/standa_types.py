@@ -98,12 +98,14 @@ def goto_data(dest_pos ,speed=500 ,
                  force_loft=False):
         
         #The sorted is used to clip the speed in the 16,5000 range
-        print speed,sorted(( float(speed), 16.0, 5000.0 ))
+        
         a=sorted(( float(speed), 16.0, 5000.0 ))[1]
         timer_period= pack_word(int( 65536.0 - ( 1000000.0 / a + 0.5 )))
-
-        print timer_period
-        m1,m2= {1:(0,0),2:(1,0),4:(0,1),8:(1,1)}[div]
+        
+        #If key is not 1,2,4,8 then use as default 8, and silently ignore 
+        #the error
+        
+        m1,m2= {1:(0,0),2:(1,0),4:(0,1),8:(1,1)}.get(div,(1,1))
 
         fmt="HB"
         buf=struct.pack(fmt,
