@@ -1,6 +1,7 @@
 import math
 import usb
 from standa_types import State, goto_data
+import time
 nan=float('nan')
 
 #No esta definido en pyusb
@@ -65,9 +66,10 @@ class Standa:
         wValue=  0x0000
         wIndex=  0x0000
         wLength= 0x000B
+        data=wLength
         data=self.udev.controlMsg( requestType=bRequestType, 
                                    request=bRequest,
-                                   buffer=wLength,
+                                   buffer=data,
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
@@ -81,7 +83,7 @@ class Standa:
         Data=()
         self.udev.controlMsg(requestType=0x40,request=0x07,buffer=Data,value=0,index=0,timeout=1000)
     
-    def move(self,POS=0,div=8, speed=500):#L=128,I=0,div=8):#Velocidad 625 , divisor: 8,4,2,1, carro:serial
+    def move(self,pos, speed=500,div=1):#L=128,I=0,div=8):#Velocidad 625 , divisor: 8,4,2,1, carro:serial
         '''
         Move to a given position
         '''
@@ -89,9 +91,9 @@ class Standa:
         bRequest = 0x80;
         wLength  = 0x0003 #Data=(0xf9,0xc0,int(math.log(div)))
         #kern_buf = user_to_kernel ( user_buf, *wLength + 4 );
-        wIndex   = POS & 0xFFFF            #FIRST_WORD  ( kern_buf );
-        wValue   = (POS/0x10000) & 0xFFFF #SECOND_WORD ( kern_buf );
-        data=goto_data(POS,div=div,speed=speed)
+        wIndex   = pos & 0xFFFF            #FIRST_WORD  ( kern_buf );
+        wValue   = (pos/0x10000) & 0xFFFF #SECOND_WORD ( kern_buf );
+        data=goto_data(pos,div=div,speed=speed)
         #
         self.udev.controlMsg(requestType=bRequestType, request=bRequest,buffer=data,value=wValue, index=wIndex,timeout= 1000)
 
@@ -101,7 +103,10 @@ class Standa:
         '''
         st=self.get_state()
         return (st.trailer1,st.trailer2)
-        
+    
+    def get_current_position(self):
+        st=self.get_state()
+        return st.cur_pos
         
     def _fpark(self):
         """If any of the limit switches is pressed, move slowly the translation
@@ -130,7 +135,7 @@ class Standa:
             self.stop()
             
 
-    def park(self, mside=True,speed=2000):
+    def park(self, mside=True,speed=500, div=1):
         '''
         Park the translation stage, and set the current position to 0
         
@@ -145,46 +150,50 @@ class Standa:
         else:     move=-10000000
         
         self.set_current_position(0)
-        self.move(0)
-        self.wait()
+        # The delays in the wait are needed, because some times the run 
+        # order is not executed inmediatelly
+        #TODO: Check for a flush for tthe USB
+        self.wait(0.1)
         
-        self.move(move,div=2,speed=speed)
-        self.wait() # wait checking for the trailers
-    
+        self.move(move,div=div,speed=speed)
+        self.wait(0.1) # wait checking for the trailers
+   
         self.move(0,div=8,speed=64)
+
         while any(self.get_trailer()):    
             pass
         self.stop()
         self.set_current_position(0)    
-        self.move(0)
-        self.wait()
+        self.move(0,div=8,speed=64)
+        self.wait(0.1)
         
         return None 
     
     def set_current_position(self, pos=0):
         bRequestType =  USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
         bRequest      = 0x01
-        wLength       = 0x0000 #Creo que debe ser un none
+        wLength       = 0x0000 
         wValue        = pos >> 16 &0xFFFF
         wIndex        = pos & 0xFFFF
-        
+        data=()
         data=self.udev.controlMsg( requestType=bRequestType, 
                                    request=bRequest,
-                                   buffer=wLength,
+                                   buffer=data,
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
         return data
     
-    def wait(self):
+    def wait(self,tmr=0):
         '''
-        Wait intil the translation stage stops
+        Wait time seconds and then until the translation stage stops
+        
         '''
+        if time: time.sleep(tmr)
         while self.get_state().run: 
             if any(self.get_trailer())!=False:
                     self.stop()
                     break
-        
         return
         
     def wait_nt(self):
