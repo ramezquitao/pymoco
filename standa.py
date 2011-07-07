@@ -1,7 +1,14 @@
 import math
 import usb
-
+from standa_types import State, goto_data
 nan=float('nan')
+
+#No esta definido en pyusb
+
+USB_DIR_IN          = 0x80
+USB_DIR_OUT         = 0x00
+USB_RECIP_DEVICE    = usb.RECIP_DEVICE
+USB_TYPE_VENDOR     = usb.TYPE_VENDOR
 
 
 
@@ -52,6 +59,20 @@ class Standa:
         
         self.pos=nan #Current position is unknown
 
+    def get_state(self):
+        bRequestType = USB_DIR_IN | USB_RECIP_DEVICE | USB_TYPE_VENDOR;
+        bRequest=0x82
+        wValue=  0x0000
+        wIndex=  0x0000
+        wLength= 0x000B
+        data=self.udev.controlMsg( requestType=bRequestType, 
+                                   request=bRequest,
+                                   buffer=wLength,
+                                   value=wValue, 
+                                   index=wIndex,
+                                   timeout= 1000)
+        return State(data)  # TODO: pass the board version so the temperature
+                            #       can be calculated correctly
 
     def stop(self):
         '''
@@ -60,44 +81,56 @@ class Standa:
         Data=()
         self.udev.controlMsg(requestType=0x40,request=0x07,buffer=Data,value=0,index=0,timeout=1000)
     
-    def move(self,POS=0,div=8):#L=128,I=0,div=8):#Velocidad 625 , divisor: 8,4,2,1, carro:serial
+    def move(self,POS=0,div=8, speed=500):#L=128,I=0,div=8):#Velocidad 625 , divisor: 8,4,2,1, carro:serial
         '''
         Move to a given position
         '''
-        Data=(0xf9,0xc0,int(math.log(div)))
-        I=POS & 0xFFFF
-        L=(POS/0x10000) & 0xFFFF
-        self.udev.controlMsg(requestType=0x40, request=0x80,buffer=Data,value=L, index=I,timeout= 1000)
+        bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR;
+        bRequest = 0x80;
+        wLength  = 0x0003 #Data=(0xf9,0xc0,int(math.log(div)))
+        #kern_buf = user_to_kernel ( user_buf, *wLength + 4 );
+        wIndex   = POS & 0xFFFF            #FIRST_WORD  ( kern_buf );
+        wValue   = (POS/0x10000) & 0xFFFF #SECOND_WORD ( kern_buf );
+        data=goto_data(POS,div=div,speed=speed)
+        #
+        self.udev.controlMsg(requestType=bRequestType, request=bRequest,buffer=data,value=wValue, index=wIndex,timeout= 1000)
 
     def get_trailer(self):
         '''
         Check if the limit switches are pressed
         '''
-        bytesToGet=512
-        data=self.udev.controlMsg(requestType=0xC0, request=0x82,buffer=bytesToGet,value=0x001, index=0,timeout= 1000)
-        return (data[7]>>6)&3
+        st=self.get_state()
+        return (st.trailer1,st.trailer2)
+        
         
     def _fpark(self):
         """If any of the limit switches is pressed, move slowly the translation
          stage until they are not"""
         
-        T=self.get_trailer()
+        ST=self.get_state()
+        cp=ST.cur_pos
+        
         # The trailer close to the motor is pressed
-        if T==2:
-            self.move(-10000,8)
-            while self.get_trailer():
-                pass
+        if ST.trailer2:
+            while any(self.get_trailer()):
+                ST=self.get_state()
+                cp=ST.cur_pos
+                self.move(cp-10000,div=8,speed=500)
+                self.wait_nt()
             self.stop()
-            self.udev.controlMsg(requestType=0x40, request=0x01,buffer=0,value=0x00, index=0,timeout= 1000) 
+            #~ self.udev.controlMsg(requestType=0x40, request=0x01,buffer=0,value=0x00, index=0,timeout= 1000) 
+        
         # The trailer far from the motor is pressed
-        elif T==1:
-            self.move(10000,8)
-            while self.get_trailer():
-                pass
+        elif ST.trailer1:
+            while any(self.get_trailer()):
+                ST=self.get_state()
+                cp=ST.cur_pos
+                self.move(cp+10000,div=8,speed=500)
+                self.wait_nt()
             self.stop()
             
 
-    def park(self, mside=True):
+    def park(self, mside=True,speed=2000):
         '''
         Park the translation stage, and set the current position to 0
         
@@ -111,42 +144,53 @@ class Standa:
         if mside: move=10000000
         else:     move=-10000000
         
-        bytesToGet=512
-        T=self.get_trailer()
-        if T==2:
-            self.udev.controlMsg(requestType=0x40, request=0x01,buffer=0,value=0x00, index=0,timeout= 1000) 
-            return
-        else:
-            self.udev.controlMsg(requestType=0x40, request=0x01,buffer=0,value=0x00, index=0,timeout= 1000)
-            self.move(move,2)
-            while not self.get_trailer():
-                pass
-            self.stop()
-            self._fpark()
-            self.udev.controlMsg(requestType=0x40, request=0x01,buffer=0,value=0x00, index=0,timeout= 1000)
-            
+        self.set_current_position(0)
+        self.move(0)
+        self.wait()
+        
+        self.move(move,div=2,speed=speed)
+        self.wait() # wait checking for the trailers
+    
+        self.move(0,div=8,speed=64)
+        while any(self.get_trailer()):    
+            pass
+        self.stop()
+        self.set_current_position(0)    
+        self.move(0)
+        self.wait()
         
         return None 
+    
+    def set_current_position(self, pos=0):
+        bRequestType =  USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
+        bRequest      = 0x01
+        wLength       = 0x0000 #Creo que debe ser un none
+        wValue        = pos >> 16 &0xFFFF
+        wIndex        = pos & 0xFFFF
         
-
-
-    def get_state(self):
-        '''
-        Return the translation stage state.
-        '''
-        bytesToGet=512
-        data=self.udev.controlMsg(requestType=0xC0, request=0x82,buffer=bytesToGet,value=0x00, index=0,timeout= 1000) 
-        return (data[6]>>3 & 0x02) |  data[7]&0x01 
-
+        data=self.udev.controlMsg( requestType=bRequestType, 
+                                   request=bRequest,
+                                   buffer=wLength,
+                                   value=wValue, 
+                                   index=wIndex,
+                                   timeout= 1000)
+        return data
+    
     def wait(self):
         '''
         Wait intil the translation stage stops
         '''
-        while(1):    
-            if self.get_state()&1==0: 
-                    break
-            if self.get_trailer()!=0:
+        while self.get_state().run: 
+            if any(self.get_trailer())!=False:
                     self.stop()
                     break
         
+        return
+        
+    def wait_nt(self):
+        '''
+        Wait intil the translation stage stops does not check the trailers
+        '''
+        while self.get_state().run:    
+            pass
         return
