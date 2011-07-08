@@ -9,6 +9,7 @@ USB_DIR_IN          = 0x80
 USB_DIR_OUT         = 0x00
 USB_RECIP_DEVICE    = usb.RECIP_DEVICE
 USB_TYPE_VENDOR     = usb.TYPE_VENDOR
+USB_TYPE_STANDARD   = usb.TYPE_STANDARD
 
 
 
@@ -56,31 +57,52 @@ class Standa:
                         udev = dev.open()
                         if serial==get_serial(udev):
                             self.udev=udev
-        
+        self.version=int(self.get_version(),16)
         self.pos=nan #Current position is unknown
-
+        
+    def get_version(self):
+        bRequestType = USB_DIR_IN | USB_RECIP_DEVICE | USB_TYPE_STANDARD
+        bRequest      = 0x06;
+        wValue        = 0x0304;
+        wIndex        = 0x0409;
+        wLength       = 0x0006;
+        data=self.udev.controlMsg( requestType=bRequestType, 
+                                   request=bRequest,
+                                   buffer=wLength,
+                                   value=wValue, 
+                                   index=wIndex,
+                                   timeout= 1000)
+        s="0x"
+        for b in data[2:]: s=s+chr(b)
+        
+        return s
+ 
     def get_state(self):
         bRequestType = USB_DIR_IN | USB_RECIP_DEVICE | USB_TYPE_VENDOR;
         bRequest=0x82
         wValue=  0x0000
         wIndex=  0x0000
         wLength= 0x000B
-        data=wLength
         data=self.udev.controlMsg( requestType=bRequestType, 
                                    request=bRequest,
-                                   buffer=data,
+                                   buffer=wLength,
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
-        return State(data)  # TODO: pass the board version so the temperature
-                            #       can be calculated correctly
-
+        return State(data, dev_version=self.version) 
+        
     def stop(self):
         '''
         Stop the displacement
         '''
+        
+        bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
+        bRequest      = 0x07;
+        wLength       = 0x0000;
+        wValue        = 0x0000;
+        wIndex        = 0x0000;
         Data=()
-        self.udev.controlMsg(requestType=0x40,request=0x07,buffer=Data,value=0,index=0,timeout=1000)
+        self.udev.controlMsg(requestType=bRequestType,request=bRequest,buffer=Data,value=wValue,index=wIndex,timeout=1000)
     
     def move(self,pos, speed=500,div=1, sl_start=True):#L=128,I=0,div=8):#Velocidad 625 , divisor: 8,4,2,1, carro:serial
         '''
@@ -174,10 +196,9 @@ class Standa:
         wLength       = 0x0000 
         wValue        = pos >> 16 &0xFFFF
         wIndex        = pos & 0xFFFF
-        data=()
         data=self.udev.controlMsg( requestType=bRequestType, 
                                    request=bRequest,
-                                   buffer=data,
+                                   buffer=(),
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
@@ -202,3 +223,126 @@ class Standa:
         while self.get_state().run:    
             pass
         return
+
+########## Methods abobe are ready
+
+    def get_status(self,st_type):
+        bRequest = 0x00
+        wValue   = 0x0000
+        wIndex   = 0x0000
+        wLength  = 0x0002
+        
+        if st_type == GET_STATUS_DEVICE:
+            bRequestType = USB_DIR_IN | USB_RECIP_DEVICE | USB_TYPE_STANDARD
+        elif ST_TYPE == GET_STATUS_ENDPOINT:
+            bRequestType = USB_DIR_IN | USB_RECIP_ENDPOINT | USB_TYPE_STANDARD
+        elif st_type ==  GET_STATUS_INTERFACE:
+            bRequestType = USB_DIR_IN | USB_RECIP_INTERFACE | USB_TYPE_STANDARD
+
+        data=self.udev.controlMsg( requestType=bRequestType, 
+                                   request=bRequest,
+                                   buffer=wLength,
+                                   value=wValue, 
+                                   index=wIndex,
+                                   timeout= 1000)
+        print "Structures not implemented yet"
+        return data
+    
+
+    def get_serial(self):
+        bRequestType = USB_DIR_IN | USB_RECIP_DEVICE | USB_TYPE_VENDOR
+        bRequest      = 0xC9
+        wValue        = 0x0000
+        wIndex        = 0x0000
+        wLength       = 0x0010
+        data=self.udev.controlMsg( requestType=bRequestType, 
+                                   request=bRequest,
+                                   buffer=wLength,
+                                   value=wValue, 
+                                   index=wIndex,
+                                   timeout= 1000)
+        s="" 
+        for b in data: s=s+chr(b)
+        return s
+    
+    def get_encoder_state(self): 
+        bRequestType = USB_DIR_IN | USB_RECIP_DEVICE | USB_TYPE_VENDOR
+        bRequest      = 0x85
+        wValue        = 0x0000
+        wIndex        = 0x0000
+        wLength       = 0x0008
+        data=self.udev.controlMsg( requestType=bRequestType, 
+                                   request=bRequest,
+                                   buffer=wLength,
+                                   value=wValue, 
+                                   index=wIndex,
+                                   timeout= 1000)
+        print "Structures not implemented yet"
+        return data
+
+    
+    def set_mode(self):
+        bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
+        bRequest      = 0x81
+        wLength       = 0x0003
+        #~ kern_buf = user_to_kernel ( user_buf, *wLength + 4 );
+        wValue        = FIRST_WORD_SWAPPED  ( kern_buf );
+        wIndex        = SECOND_WORD_SWAPPED ( kern_buf );
+        
+        data=self.udev.controlMsg( requestType=bRequestType, 
+                                   request=bRequest,
+                                   buffer= (),
+                                   value=wValue, 
+                                   index=wIndex,
+                                   timeout= 1000)
+        print "Structures not implemented yet"
+        
+    def set_parameters(self):
+        bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
+        bRequest      = 0x83
+        wLength       = 0x0035
+        #~ kern_buf = user_to_kernel ( user_buf, *wLength + 4 );
+        wValue        = FIRST_WORD_SWAPPED ( kern_buf )
+        wIndex        = SECOND_WORD        ( kern_buf )
+        data=self.udev.controlMsg( requestType=bRequestType, 
+                                   request=bRequest,
+                                   buffer= (),
+                                   value=wValue, 
+                                   index=wIndex,
+                                   timeout= 1000)
+        print "Structures not implemented yet"
+        
+    def download(self):
+        bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
+        bRequest      = 0xC8
+        wLength       = 0x003D
+        #~ kern_buf = user_to_kernel ( user_buf, *wLength + 4 );
+        wValue        = FIRST_WORD_SWAPPED  ( kern_buf )
+        wIndex        = SECOND_WORD_SWAPPED ( kern_buf )
+        print "Structures not implemented yet"
+        
+    def set_serial(self):
+        bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
+        bRequest      = 0xCA
+        wLength       = 0x001C
+        #~ kern_buf = user_to_kernel ( user_buf, *wLength + 4 );
+        wValue        = FIRST_WORD_SWAPPED  ( kern_buf )
+        wIndex        = SECOND_WORD_SWAPPED ( kern_buf )
+        print "Structures not implemented yet"
+
+    def emulate_buttons(self):
+        bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
+        bRequest      = 0x0D
+        wLength       = 0x0000
+        #~ kern_buf = user_to_kernel ( user_buf, *wLength + 1 );
+        wValue        = FIRST_BYTE ( kern_buf );
+        wIndex        = 0x0000
+        print "Structures not implemented yet"
+
+    def save_parameters(self):
+        bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
+        bRequest      = 0x84
+        wLength       = 0x0000
+        wValue        = 0x0000
+        wIndex        = 0x0000
+        print "Structures not implemented yet"
