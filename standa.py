@@ -82,7 +82,7 @@ class Standa:
         Data=()
         self.udev.controlMsg(requestType=0x40,request=0x07,buffer=Data,value=0,index=0,timeout=1000)
     
-    def move(self,pos, speed=500,div=1):#L=128,I=0,div=8):#Velocidad 625 , divisor: 8,4,2,1, carro:serial
+    def move(self,pos, speed=500,div=1, sl_start=True):#L=128,I=0,div=8):#Velocidad 625 , divisor: 8,4,2,1, carro:serial
         '''
         Move to a given position
         '''
@@ -92,7 +92,7 @@ class Standa:
         #kern_buf = user_to_kernel ( user_buf, *wLength + 4 );
         wIndex   = pos & 0xFFFF            #FIRST_WORD  ( kern_buf );
         wValue   = (pos/0x10000) & 0xFFFF #SECOND_WORD ( kern_buf );
-        data=goto_data(pos,div=div,speed=speed)
+        data=goto_data(pos,div=div,speed=speed, sl_strt=sl_start)
         #
         self.udev.controlMsg(requestType=bRequestType, request=bRequest,buffer=data,value=wValue, index=wIndex,timeout= 1000)
 
