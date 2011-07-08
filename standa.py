@@ -1,4 +1,3 @@
-import math
 import usb
 from standa_types import State, goto_data
 import time
