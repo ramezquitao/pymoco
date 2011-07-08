@@ -157,7 +157,7 @@ class Standa:
         self.move(move,div=div,speed=speed)
         self.wait(0.1) # wait checking for the trailers
    
-        self.move(0,div=8,speed=64)
+        self.move(0,div=8,speed=128)
 
         while any(self.get_trailer()):    
             pass
