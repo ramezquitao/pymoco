@@ -1,5 +1,5 @@
 import usb
-from standa_types import State, goto_data
+from standa_types import *
 import time
 nan=float('nan')
 
@@ -7,12 +7,18 @@ nan=float('nan')
 
 USB_DIR_IN          = 0x80
 USB_DIR_OUT         = 0x00
+
 USB_RECIP_DEVICE    = usb.RECIP_DEVICE
+USB_RECIP_ENDPOINT  = usb.RECIP_ENDPOINT
+USB_RECIP_INTERFACE  = usb.RECIP_INTERFACE
+
 USB_TYPE_VENDOR     = usb.TYPE_VENDOR
 USB_TYPE_STANDARD   = usb.TYPE_STANDARD
 
 
-
+GET_STATUS_DEVICE		=1
+GET_STATUS_ENDPOINT		=2
+GET_STATUS_INTERFACE	=3
 
 def get_serial(udev):
     """Return the serial number of the corresponding usb device"""
@@ -57,8 +63,11 @@ class Standa:
                         udev = dev.open()
                         if serial==get_serial(udev):
                             self.udev=udev
-        self.version=int(self.get_version(),16)
+        self.version= int(self.get_version(),16)
+        
+        self.serial = int(self.get_serial())
         self.pos=nan #Current position is unknown
+        print "**", self.set_mode( Mode() )
         
     def get_version(self):
         bRequestType = USB_DIR_IN | USB_RECIP_DEVICE | USB_TYPE_STANDARD
@@ -110,13 +119,15 @@ class Standa:
         '''
         bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR;
         bRequest = 0x80;
-        wLength  = 0x0003 #Data=(0xf9,0xc0,int(math.log(div)))
-        #kern_buf = user_to_kernel ( user_buf, *wLength + 4 );
-        wIndex   = pos & 0xFFFF            #FIRST_WORD  ( kern_buf );
-        wValue   = (pos/0x10000) & 0xFFFF #SECOND_WORD ( kern_buf );
-        data=goto_data(pos,div=div,speed=speed, sl_strt=sl_start)
+        wLength  = 0x0003 
+        
+        buf=goto_data(pos,div=div,speed=speed, sl_strt=sl_start)
+        
+        wIndex   = first_word(buf)  #pos & 0xFFFF            #FIRST_WORD  ( kern_buf );
+        wValue   = second_word(buf) #(pos/0x10000) & 0xFFFF #SECOND_WORD ( kern_buf );
+        
         #
-        self.udev.controlMsg(requestType=bRequestType, request=bRequest,buffer=data,value=wValue, index=wIndex,timeout= 1000)
+        self.udev.controlMsg(requestType=bRequestType, request=bRequest,buffer=buf[4:],value=wValue, index=wIndex,timeout= 1000)
 
     def get_trailer(self):
         '''
@@ -224,17 +235,15 @@ class Standa:
             pass
         return
 
-########## Methods abobe are ready
-
     def get_status(self,st_type):
         bRequest = 0x00
         wValue   = 0x0000
         wIndex   = 0x0000
         wLength  = 0x0002
-        
+
         if st_type == GET_STATUS_DEVICE:
             bRequestType = USB_DIR_IN | USB_RECIP_DEVICE | USB_TYPE_STANDARD
-        elif ST_TYPE == GET_STATUS_ENDPOINT:
+        elif st_type == GET_STATUS_ENDPOINT:
             bRequestType = USB_DIR_IN | USB_RECIP_ENDPOINT | USB_TYPE_STANDARD
         elif st_type ==  GET_STATUS_INTERFACE:
             bRequestType = USB_DIR_IN | USB_RECIP_INTERFACE | USB_TYPE_STANDARD
@@ -245,9 +254,7 @@ class Standa:
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
-        print "Structures not implemented yet"
         return data
-    
 
     def get_serial(self):
         bRequestType = USB_DIR_IN | USB_RECIP_DEVICE | USB_TYPE_VENDOR
@@ -261,10 +268,11 @@ class Standa:
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
-        s="" 
-        for b in data: s=s+chr(b)
-        return s
-    
+                                   
+        ser=""
+        for i in data: ser=ser+chr(i) 
+        return ser
+        
     def get_encoder_state(self): 
         bRequestType = USB_DIR_IN | USB_RECIP_DEVICE | USB_TYPE_VENDOR
         bRequest      = 0x85
@@ -277,25 +285,43 @@ class Standa:
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
-        print "Structures not implemented yet"
-        return data
+        return EncoderState(data)        
 
-    
-    def set_mode(self):
+
+    def set_mode(self, mode):
+        """
+        mode - instance of the class mode
+        """
+        
+        assert isinstance(mode,Mode),"mode must be an instance of the Mode class"
+        
         bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
         bRequest      = 0x81
         wLength       = 0x0003
-        #~ kern_buf = user_to_kernel ( user_buf, *wLength + 4 );
-        wValue        = FIRST_WORD_SWAPPED  ( kern_buf );
-        wIndex        = SECOND_WORD_SWAPPED ( kern_buf );
+        buf = mode.tobuffer()
+        
+        wValue        = first_word_swapped(buf)
+        wIndex        = second_word_swapped(buf)
         
         data=self.udev.controlMsg( requestType=bRequestType, 
                                    request=bRequest,
-                                   buffer= (),
+                                   buffer= buf[4:],
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
-        print "Structures not implemented yet"
+        self.__mode__=mode
+        return data
+             
+########## Methods abobe are ready
+   
+    
+
+
+    
+    
+
+    
+
         
     def set_parameters(self):
         bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
