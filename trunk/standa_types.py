@@ -311,23 +311,6 @@ def goto_data(dest_pos ,speed=500 ,
                           m1+2*m2+4*def_dir+8*loft_en+
                           16*sl_strt+32*w_sync+64*sync_out+128*force_loft)
         return buf
-    
-	#~ __u32 DestPos;		// Destination Position.
-	#~ __u16  TimerPeriod;	// Period between steps is 12*(65536-[TimerPeriod])/[SysClk] in seconds, where SysClk = 24000000 Hz.
-	#~ // Byte 7:
-	#~ __u8  M1        : 1;	// | Step size is 2^(-M1-2*M2), where M1,M2 = 0,1. May be otherwise 1<->2.
-	#~ __u8  M2        : 1;	// |
-	#~ __u8  DEFDIR    : 1;	// Default direction. For "Anti Loft" operation.
-	#~ __u8  LOFTEN    : 1;	// Enable automatic "Anti Loft" operation.
-	#~ __u8  SLSTRT    : 1;	// Slow Start(and Stop) mode.
-	#~ __u8  WSYNCIN   : 1;	// Wait for input synchronization signal to start.
-	#~ __u8  SYNCOUTR  : 1;	// Reset output synchronization counter.
-	#~ __u8  FORCELOFT : 1;	// Force driver automatic "Anti Loft" mechanism to reset "Loft State".
-
-
-
-
-
 
 #~ 
 #~ typedef	struct	_GO_TO_PACKET	// 7 bytes;
@@ -347,8 +330,68 @@ def goto_data(dest_pos ,speed=500 ,
 #~ 
 #~ 
 
-#~ 
-#~ 
+class Parameters:
+    def __init__(self,param_buf=None,**kwargs):
+        
+        if isinstance(param_buf,tuple):
+            assert kwargs=={}, "if param_buf != None no kwargs can be given"
+            
+            st=array("B", mode)
+            fmt="=BB13HIHHHBHB15s"
+            self.delay1,
+            self.delay2,
+            self.refintimeout,
+            self.btimeout1,
+            self.btimeout2,
+            self.btimeout3,
+            self.btimeout4,
+            self.btimeoutr,
+            self.btimeoutd,
+            self.miniperiod,
+            self.bto1p,
+            self.bto2p,
+            self.bto3p,
+            self.bto4p,
+            self.max_loft,
+            self.startpos,
+            self.rtdelta,
+            self.rtminerror,
+            self.maxtemp,
+            self.sinoutp,
+            self.loftperiod,
+            self.encvscp,
+            self.reserved=struct.unpack(fmt,st)
+        else:
+            assert mode==None, "Assert can only be a tuple or none"
+            self.delay1=kwargs.pop("delay1")
+            self.delay2=kwargs.pop("delay2")
+            self.refintimeout=kwargs.pop("refintimeout")
+            self.btimeout1=kwargs.pop("btimeout1")
+            self.btimeout2=kwargs.pop("btimeout2")
+            self.btimeout3=kwargs.pop("btimeout3")
+            self.btimeout4=kwargs.pop("btimeout4")
+            self.btimeoutr=kwargs.pop("btimeoutr")
+            self.btimeoutd=kwargs.pop("btimeoutd")
+            self.miniperiod=kwargs.pop("miniperiod")
+            self.bto1p=kwargs.pop("bto1p")
+            self.bto2p=kwargs.pop("bto2p")
+            self.bto3p=kwargs.pop("bto3p")
+            self.bto4p=kwargs.pop("bto4p")
+            self.max_loft=kwargs.pop("max_loft")
+            self.startpos=kwargs.pop("startpos")
+            self.rtdelta=kwargs.pop("rtdelta")
+            self.rtminerror=kwargs.pop("rtminerror")
+            self.maxtemp=kwargs.pop("maxtemp")
+            self.sinoutp=kwargs.pop("sinoutp")
+            self.loftperiod=kwargs.pop("loftperiod")
+            self.encvscp=kwargs.pop("encvscp")
+            self.reserved=kwargs.pop("reserved")
+
+        assert kwargs=={}, "invalid kwargs given "+str(kwargs)
+
+            
+        
+        
 #~ typedef	struct	_PARAMETERS_PACKET	// 57 bytes;
 #~ {
 	#~ __u8  DELAY1;		// Acceleration time multiplier.
