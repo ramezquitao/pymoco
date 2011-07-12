@@ -67,8 +67,13 @@ class Standa:
         
         self.serial = int(self.get_serial())
         self.pos=nan #Current position is unknown
-        print "**", self.set_mode( Mode() )
         
+        #Load the default mode
+        self.set_mode( Mode() )
+        
+        #Load the default parameters
+        self.set_parameters(Parameters())
+    
     def get_version(self):
         bRequestType = USB_DIR_IN | USB_RECIP_DEVICE | USB_TYPE_STANDARD
         bRequest      = 0x06;
@@ -215,7 +220,7 @@ class Standa:
                                    timeout= 1000)
         return data
     
-    def wait(self,tmr=0):
+    def wait(self,tmr=0.1):
         '''
         Wait time seconds and then until the translation stage stops
         
@@ -309,7 +314,6 @@ class Standa:
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
-        self.__mode__=mode
         return data
              
 ########## Methods abobe are ready
@@ -323,20 +327,26 @@ class Standa:
     
 
         
-    def set_parameters(self):
+    def set_parameters(self,para):
+        
+        self.parameters=para
+        
         bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
         bRequest      = 0x83
         wLength       = 0x0035
-        #~ kern_buf = user_to_kernel ( user_buf, *wLength + 4 );
-        wValue        = FIRST_WORD_SWAPPED ( kern_buf )
-        wIndex        = SECOND_WORD        ( kern_buf )
+        buf           = para.tobuffer()
+        wValue        = first_word_swapped ( buf )
+        wIndex        = second_word        ( buf )
         data=self.udev.controlMsg( requestType=bRequestType, 
                                    request=bRequest,
-                                   buffer= (),
+                                   buffer= buf[4:],
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
-        print "Structures not implemented yet"
+        return data
+        
+    #def get_parameters(self):
+        
         
     def download(self):
         bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR

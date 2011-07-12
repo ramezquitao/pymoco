@@ -1,5 +1,6 @@
 import struct
 from array import array
+from easystruct import Easystruct
 
 def getbit(num,bit=0):
     b=0x01<<bit
@@ -8,7 +9,7 @@ def getbit(num,bit=0):
 def tobyte(lb):
     res=0
     for n,b in enumerate(lb):
-        res=b*(2**n)
+        res=res+b*(2**n)
     return res
     
 def byte2bits(byte):
@@ -18,6 +19,9 @@ def byte2bits(byte):
     return res
 
 
+def clamp(val,minv,maxv):
+    return sorted(( val, minv, maxv ))[1]
+    
 #define		BYTE_I(i)				(*(((__u8 * )pPacketData)+i))
 
 def first_byte(buf):
@@ -44,6 +48,11 @@ def second_word_swapped(buf):
     
 #define		REST_DATA(pPacketData)			((void *)(((__u16 * )pPacketData)+2))
 
+def byte(b):
+    return int(b) & 0xff
+    
+def word(w):
+    return int(w) & 0xffff
 
 def hibyte(w):
     return ((w&0xff00)>>8)
@@ -178,19 +187,19 @@ class Mode:
             self.resenc]=byte2bits(b2)
         else:
             assert mode==None, "Assert can only be a tuple or none"
-            self.pmode=kwargs.pop("pmode",False)
-            self.refinen=kwargs.pop("refinen",False)
+            self.pmode=kwargs.pop("pmode",True)
+            self.refinen=kwargs.pop("refinen",True) #preg
             self.resetd=kwargs.pop("resetd",False)
             self.emreset=kwargs.pop("emreset",False)
-            self.tr1t=kwargs.pop("tr1t",False)
-            self.tr2r=kwargs.pop("tr2r",False)
+            self.tr1t=kwargs.pop("tr1t",False) # OK for CI stages
+            self.tr2r=kwargs.pop("tr2r",False) # OK for CI stages
             self.rottrt=kwargs.pop("rottrt",False)
             self.trswap=kwargs.pop("trswap",False)
                        
             ##########
             
-            self.tr1en=kwargs.pop("tr1en",False)
-            self.tr2en=kwargs.pop("tr2en",False)
+            self.tr1en=kwargs.pop("tr1en",True) # This does not seem to matter
+            self.tr2en=kwargs.pop("tr2en",True) # This does not seem to matter
             self.rettren=kwargs.pop("rettren",False)
             self.rottrop=kwargs.pop("rottrop",False)
             self.butt1t=kwargs.pop("butt1t",False)
@@ -200,24 +209,24 @@ class Mode:
             
             #############
                      
-            self.sncouten=kwargs.pop("sncouten",False)
+            self.sncouten=kwargs.pop("sncouten",True)
             self.syncoutr=kwargs.pop("syncoutr",False)
-            self.syncinop=kwargs.pop("syncinop",False)
+            self.syncinop=kwargs.pop("syncinop",True)
             self.syncopol=kwargs.pop("syncopol",False)
-            self.encoder=kwargs.pop("encoder",False)
-            self.incvenc=kwargs.pop("incvenc",False)
+            self.encoder=kwargs.pop("encoder",False) # Encoderen
+            self.incvenc=kwargs.pop("incvenc",False) #Encoderinv
             self.resbenc=kwargs.pop("resbenc",False)
             self.resenc=kwargs.pop("resenc",False)
             
             ##############
             
-            self.synccount=kwargs.pop("synccount",0)
+            self.synccount=kwargs.pop("synccount",4)
         
         assert kwargs=={}, "invalid kwargs given "+str(kwargs)
         
         
     def tobuffer(self):
-        fmt="BBBI"
+        fmt="=BBBI"
         
         b0=tobyte([self.pmode,
                        self.refinen,
@@ -330,96 +339,91 @@ def goto_data(dest_pos ,speed=500 ,
 #~ 
 #~ 
 
-class Parameters:
-    def __init__(self,param_buf=None,**kwargs):
+
+class Parameters(Easystruct):
+
+    def __init__(self,param_buf=None, dev_ver=0x2400, **kwargs):
         
-        if isinstance(param_buf,tuple):
-            assert kwargs=={}, "if param_buf != None no kwargs can be given"
-            
-            st=array("B", mode)
-            fmt="=BB13HIHHHBHB15s"
-            self.delay1,
-            self.delay2,
-            self.refintimeout,
-            self.btimeout1,
-            self.btimeout2,
-            self.btimeout3,
-            self.btimeout4,
-            self.btimeoutr,
-            self.btimeoutd,
-            self.miniperiod,
-            self.bto1p,
-            self.bto2p,
-            self.bto3p,
-            self.bto4p,
-            self.max_loft,
-            self.startpos,
-            self.rtdelta,
-            self.rtminerror,
-            self.maxtemp,
-            self.sinoutp,
-            self.loftperiod,
-            self.encvscp,
-            self.reserved=struct.unpack(fmt,st)
+        if dev_ver< 0x2407:
+            startposfunc= lambda x: 0
+            istartposfunc = lambda x: 0
         else:
-            assert mode==None, "Assert can only be a tuple or none"
-            self.delay1=kwargs.pop("delay1")
-            self.delay2=kwargs.pop("delay2")
-            self.refintimeout=kwargs.pop("refintimeout")
-            self.btimeout1=kwargs.pop("btimeout1")
-            self.btimeout2=kwargs.pop("btimeout2")
-            self.btimeout3=kwargs.pop("btimeout3")
-            self.btimeout4=kwargs.pop("btimeout4")
-            self.btimeoutr=kwargs.pop("btimeoutr")
-            self.btimeoutd=kwargs.pop("btimeoutd")
-            self.miniperiod=kwargs.pop("miniperiod")
-            self.bto1p=kwargs.pop("bto1p")
-            self.bto2p=kwargs.pop("bto2p")
-            self.bto3p=kwargs.pop("bto3p")
-            self.bto4p=kwargs.pop("bto4p")
-            self.max_loft=kwargs.pop("max_loft")
-            self.startpos=kwargs.pop("startpos")
-            self.rtdelta=kwargs.pop("rtdelta")
-            self.rtminerror=kwargs.pop("rtminerror")
-            self.maxtemp=kwargs.pop("maxtemp")
-            self.sinoutp=kwargs.pop("sinoutp")
-            self.loftperiod=kwargs.pop("loftperiod")
-            self.encvscp=kwargs.pop("encvscp")
-            self.reserved=kwargs.pop("reserved")
+            startposfunc= lambda x: pack_word(x*8 & 0xFFFFFF00)
+            istartporfunc=lambda x: pack_word(x)/8
+            
+        if dev_ver <0x2400:
+            def maxtempfunc(T):
+                t=clamp(T,0.,100.)
+                t = 10.0 * exp (3950.0*(1.0/(t+273.0)-1.0/298.0))
+                t = ((5*t/(10+t))*65536.0/3.3+0.5);
+                return pack_word(word(t))
+            
+            def maxtempfunci(T):
+                t=float(pack_word(T))
+                t=t*3.3/ 65536.0
+                t=10.0*t/(5.0-t)
+                t=(1.0/298.0)+(1.0/3950.0)*log(t/10.0)
+                t=1.0/t- 273.0
+                return t
 
-        assert kwargs=={}, "invalid kwargs given "+str(kwargs)
+        else:
+            def maxtempfunc(T):
+                t=(T+50.0)/330.0*65536.0
+                t=(t+0.5)   
+                return pack_word(word(t))
+                
+            def maxtempfunci(T):
+                t = float(pack_word(T))
+                t=(t*3.3*100.0/65536.0)-50.0
+                return t
 
+        
+        def loftperiodfunc(x):
+            if x==0.:
+                return 0
+            else:
+                return pack_word (word(65536.0-(125000.0/clamp(x,16.0,5000.0))+0.5))
+        
+        def loftperiodfunci(x):
+            X=pack_word(x)
+            
+            if X==0:
+                return 0.
+            else:
+                return 125000.0/(65536.0-X)
+                
+        structdef=[ ("delay1","B",500., lambda x: byte(clamp(int(x/98.+.5 ),1,15 )),lambda x: 98.*x), #AccelT
+                    ("delay2","B",500., lambda x: byte(clamp(int(x/98.+.5 ),1,15 )),lambda x: 98.*x), #DecelT
+                    ("refintimeout","H",100., lambda x: word(clamp(x,1.,9961.)/0.152 + 0.5),lambda x: x*.152), #ptimeout
+                    ("btimeout1","H",500., lambda x: pack_word(word(clamp(x,1.,9961.)/0.152 + 0.5)),lambda x: pack_word(x)*.152),
+                    ("btimeout2","H",500., lambda x: pack_word(word(clamp(x,1.,9961.)/0.152 + 0.5)),lambda x: pack_word(x)*.152),
+                    ("btimeout3","H",500., lambda x: pack_word(word(clamp(x,1.,9961.)/0.152 + 0.5)),lambda x: pack_word(x)*.152),
+                    ("btimeout4","H",500., lambda x: pack_word(word(clamp(x,1.,9961.)/0.152 + 0.5)),lambda x: pack_word(x)*.152),
+                    ("btimeoutr","H",500., lambda x: pack_word(word(clamp(x,1.,9961.)/0.152 + 0.5)),lambda x: pack_word(x)*.152),
+                    ("btimeoutd","H",0, lambda x: pack_word(word(clamp(x,1.,9961.)/0.152 + 0.5)),lambda x: pack_word(x)*.152),
+                    ("miniperiod","H",500., lambda x:pack_word(word(65536.-(125000.0/clamp(x,2.0,625.0))+0.5)),lambda x:125000.0/(65536.0-(pack_word(x)))),
+                    ("bto1p","H",200.,lambda x:pack_word(word(65536.-(125000.0/clamp(x,2.0,625.0))+0.5)),lambda x:125000.0/(65536.0-(pack_word(x)))),
+                    ("bto2p","H",300.,lambda x:pack_word(word(65536.-(125000.0/clamp(x,2.0,625.0))+0.5)),lambda x:125000.0/(65536.0-(pack_word(x)))),
+                    ("bto3p","H",400.,lambda x:pack_word(word(65536.-(125000.0/clamp(x,2.0,625.0))+0.5)),lambda x:125000.0/(65536.0-(pack_word(x)))),
+                    ("bto4p","H",500.,lambda x:pack_word(word(65536.-(125000.0/clamp(x,2.0,625.0))+0.5)),lambda x:125000.0/(65536.0-(pack_word(x)))),
+                    ("max_loft","H",32,lambda x:pack_word(word(clamp(x, 1, 1023 )*64)),lambda x: pack_word(x)/64),
+                    ("startpos","I",0,startposfunc,istartposfunc),
+                    ("rtdelta","H",200,lambda x:pack_word(word(clamp(x,4,1023)*64)),lambda x:pack_word(x)/64),
+                    ("rtminerror","H",15,lambda x:pack_word(word(clamp(x,4,1023)*64)),lambda x:pack_word(x)/64),
+                    ("maxtemp","H",70.,maxtempfunc,maxtempfunci),
+                    ("sinoutp","B",1,None,None),
+                    ("loftperiod","H",500.,loftperiodfunc,loftperiodfunci),
+                    ("encvscp","B",2.5,lambda x: byte(x*4. +.5),lambda x: x/4.), #Encmul
+                    ("reserved","15s","",None,None),
+                    ]
+        Easystruct.__init__(self,structdef,param_buf,**kwargs)
+    
+    
             
         
         
-#~ typedef	struct	_PARAMETERS_PACKET	// 57 bytes;
-#~ {
-	#~ __u8  DELAY1;		// Acceleration time multiplier.
-	#~ __u8  DELAY2;		// Deceleration time multiplier.
-	#~ __u16 RefINTimeout;	// Timeout for RefIN reseting.
-	#~ __u16 BTIMEOUT1;	// | Buttons Timeouts (4 stages).
-	#~ __u16 BTIMEOUT2;	// |
-	#~ __u16 BTIMEOUT3;	// |
-	#~ __u16 BTIMEOUT4;	// |
-	#~ __u16 BTIMEOUTR;	// Timeout for RESET command.
-	#~ __u16 BTIMEOUTD;	// Timeout for Double Click.
-	#~ __u16 MINPERIOD;	// Standart Timer Period.
-	#~ __u16 BTO1P;		// | Timer Periods for button rotation.
-	#~ __u16 BTO2P;		// |
-	#~ __u16 BTO3P;		// |
-	#~ __u16 BTO4P;		// |
-	#~ __u16 MAX_LOFT;		// Max Loft Value.
-	#~ __u32 STARTPOS;		// Start Position.
-	#~ __u16 RTDelta;		// Revolution Distance.
-	#~ __u16 RTMinError;	// Minimal value of Rotatory Tranduser Error.
-	#~ __u16 MaxTemp;		// Working Temperature Limit.
-	#~ __u8  SynOUTP;		// Syncronizaion OUT pulse duration( T = (sopd-1/2)*StepPeriod ).
-	#~ __u16 LoftPeriod;	// Loft last phase speed.
-	#~ __u8  EncVSCP;		// 4x Number of Encoder steps per one full SM step.
-	#~ __u8  Reserved [15];	// Reserved.
-#~ } PARAMETERS_PACKET, * PPARAMETERS_PACKET, * LPPARAMETERS_PACKET;
-#~ 
-#~ 
+ 
+
 #~ typedef	struct	_DOWNLOAD_PACKET	// 65 bytes;
 #~ {
 	#~ __u8 Page;		// Page number ( 0 - 119 ). 0 - first, 119 - last.
