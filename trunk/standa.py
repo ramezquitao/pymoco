@@ -338,6 +338,19 @@ class Standa(object):
                                    timeout= 1000)
         self.__parameters__=para
         return data
+    def set_ss_time(self, sstime):
+        """Set the start and stop time
+            sstime tuple with the start and stop time in ms
+        """
+        strt,stpt=sstime
+        self.__parameters__.delay1=strt
+        self.__parameters__.delay2=stpt
+        self.set_parameters(self.__parameters__)
+        
+    def get_ss_time(self):
+        """Return the start and stop time"""
+        return self.__parameters__.delay1,self.__parameters__.delay2
+        
 
     # As is not possible to read from the driver board to get the current 
     # mode and the current Parameters, all the configuration attributes of the class
@@ -349,7 +362,12 @@ class Standa(object):
     
     # curpos : Indicates the position of the stage in steps
     # This is a wrapper to get_current_position and set_current_position
+    
     curpos = property(get_current_position, set_current_position)
+    
+    # ss_time: tuple indicating  the start and stop time in miliseccond
+    
+    ss_time= property(get_ss_time,set_ss_time)
     
     # End definition of properties
 

@@ -6,5 +6,5 @@ setup(name='pyMoCo',
       version='0.0',
       description='Python wrapper for motion controller drivers',
       url='http://code.google.com/p/pymoco/',
-      py_modules = ['standa','standa_types']
+      py_modules = ['standa','standa_types', 'easystruct']
       )
