@@ -199,13 +199,13 @@ class Standa(object):
         self.move(move,div=div,speed=speed)
         self.wait(0.1) # wait checking for the trailers
    
-        self.move(-move,div=8,speed=128)
+        self.move(-move,div=1,speed=128)
 
         while any(self.get_trailer()):    
             pass
         self.stop()
         self.set_current_position(0)    
-        self.move(0,div=8,speed=64)
+        self.move(0,div=1,speed=64)
         self.wait(0.1)
         
         return None 
