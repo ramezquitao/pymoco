@@ -73,73 +73,101 @@ def pack_word(w):
 def pack_dword(w):
     return  (hibyte(hiword(w))| (lobyte(hiword(w))<<8)| (hibyte(loword(w))<<16)| (lobyte(loword(w))<<24))
      
-class State:
-    def __init__(self,state=None,dev_version=0x2400):
-        
-        
-        fmt="=iHBBBH"
-        st=array("B",state[0:11])
-        pos,temp,S0,S1,S2,volt= struct.unpack(fmt,st)
-        
-        M1=getbit(S0,0)         # | Step size is 2^(-M1-2*M2), where M1,M2 = 0,1. May be otherwise 1<->2.
-        M2=getbit(S0,1)         # |
-        LOFT=getbit(S0,2)       # Indicates "Loft State".
-        REFIN=getbit(S0,3)      # If TRUE then full power.
-        CW_CCW=getbit(S0,4)     # Current direction. Relatively!
-        RESET=getbit(S0,5)      # If TRUE then Step Motor is ON.
-        FULLSPEED=getbit(S0,6)  # If TRUE then full speed. Valid in "Slow Start" mode.
-        AFTRESET=getbit(S0,7)   # TRUE After Device reset, FALSE after "Set Position".
-        
-        
-        RUN=getbit(S1,0)        # TRUE if step motor is rotating.
-        SYNCIN=getbit(S1,1)     # Logical state directly from input synchronization PIN (pulses treated as positive).
-        SYNCOUT=getbit(S1,2)    # Logical state directly from output synchronization PIN (pulses are positive).
-        ROTTR=getbit(S1,3)      # Indicates current rotary transducer logical press state.
-        ROTTRERR=getbit(S1,4)   # Indicates rotary transducer error flag (reset by USMC_SetMode function with ResetRT bit  TRUE).
-        EMRESET=getbit(S1,5)    # Indicates state of emergency disable button (TRUE  Step motor power off).
-        TRAILER1=getbit(S1,6)   # Indicates trailer 1 logical press state.
-        TRAILER2=getbit(S1,7)   # Indicates trailer 2 logical press state.
-        
-        USBPOW=getbit(S2,0)     # USB Powered.
-        #UNKNOWN   : 6;
-        Working=getbit(S2,7)    # This bit must be always TRUE (to chek functionality).
-        
-        self.areset = AFTRESET
-        
-        self.cw_ccw =  CW_CCW
-        self.em_reset = EMRESET
-        self.full_power =  REFIN
-        self.full_speed = FULLSPEED
-        self.loft = LOFT
-        self.power = RESET
-        self.rot_tr = ROTTR
-        self.rot_tr_err  = ROTTRERR
-        self.run = RUN
-        #/*Str -> SDivisor= See below;*/
-        self.sinc_in = SYNCIN
-        self.sinc_out = SYNCOUT
-        
-        self.trailer1  = TRAILER1
-        self.trailer2  = TRAILER2
-	
-        self.cur_pos=pos #( ( signed int ) getStateData.CurPos ) / 8;
-        self.voltage=volt/ 65536.0 * 3.3 * 20.0;
-        if self.voltage<5:self.voltage=0
-        
-        if dev_version< 0x2400:
-            temp = temp * 3.3 / 65536.0;
-            temp = temp * 10.0 / ( 5.0 - temp );
-            temp = ( 1.0 / 298.0 ) + ( 1.0 / 3950.0 ) * log ( temp / 10.0 );
-            temp = 1.0 / t - 273.0;
-	
+
+class State(Easystruct):
+    def __init__(self, modebuf=None, dev_version=0x2400, **kwargs):
+        if dev_version <0x2400:
+            def tempfunc(T):
+                t=clamp(T,0.,100.)
+                t = 10.0 * exp (3950.0*(1.0/(t+273.0)-1.0/298.0))
+                t = ((5*t/(10+t))*65536.0/3.3+0.5);
+                return t
+            
+            def tempfunci(T):
+                t=float(t)
+                t=t*3.3/ 65536.0
+                t=10.0*t/(5.0-t)
+                t=(1.0/298.0)+(1.0/3950.0)*log(t/10.0)
+                t=1.0/t- 273.0
+                return t
+
         else:
-            temp = ( ( temp * 3.3 * 100.0 / 65536.0 ) - 50.0 );
-        self.temp=temp
+            def tempfunc(T):
+                t=(T+50.0)/330.0*65536.0
+                t=(t+0.5)   
+                return t
+                
+            def tempfunci(T):
+                t = float(T)
+                t=(t*3.3*100.0/65536.0)-50.0
+                return t
+                
+        def volt(vi):
+            v= float(vi)/ 65536.0 * 3.3 * 20.0
+            if v<5.: v=0
+            return v
+
+        
+        structdef=[ ("curpos"   ,"i", 0x00, None, None), 
+                    ("temp"     ,"H", 0x00, tempfunc, tempfunci),
+                    ("s0"       ,"B", 0x00, None, None), 
+                    ("s1"       ,"B", 0x00, None, None),
+                    ("s2"       ,"B", 0x00, None, None),
+                    ("voltage"  ,"H", 0x04, None,volt)]
+        Easystruct.__init__(self,structdef,modebuf,checkargs=False,**kwargs)
+        
+        
+    m1g=        lambda self:getbit(self.s0,0)         # | Step size is 2^(-M1-2*M2), where M1,M2 = 0,1. May be otherwise 1<->2.
+    m2g=        lambda self:getbit(self.s0,1)         # |
+    loftg=      lambda self:getbit(self.s0,2)       # Indicates "Loft State".
+    refing=     lambda self:getbit(self.s0,3)      # If TRUE then full power.
+    cw_ccwg=    lambda self:getbit(self.s0,4)     # Current direction. Relatively!
+    emresetg=   lambda self:getbit(self.s0,5)      # If TRUE then Step Motor is ON.
+    fullspeedg= lambda self:getbit(self.s0,6)  # If TRUE then full speed. Valid in "Slow Start" mode.
+    aresetg=    lambda self:getbit(self.s0,7)   # TRUE After Device reset, FALSE after "Set Position".
+    
+    
+    rung=       lambda self:getbit(self.s1,0)        # TRUE if step motor is rotating.
+    syncing=    lambda self:getbit(self.s1,1)     # Logical state directly from input synchronization PIN (pulses treated as positive).
+    syncoutg=   lambda self:getbit(self.s1,2)    # Logical state directly from output synchronization PIN (pulses are positive).
+    rottrg=     lambda self:getbit(self.s1,3)      # Indicates current rotary transducer logical press state.
+    rottrerrg=  lambda self:getbit(self.s1,4)   # Indicates rotary transducer error flag (reset by USMC_SetMode function with ResetRT bit  TRUE).
+    emresetg=   lambda self:getbit(self.s1,5)    # Indicates state of emergency disable button (TRUE  Step motor power off).
+    trailer1g=  lambda self:getbit(self.s1,6)   # Indicates trailer 1 logical press state.
+    trailer2g=  lambda self:getbit(self.s1,7)   # Indicates trailer 2 logical press state.
+    
+    usbpowg=    lambda self:getbit(self.s2,0)     # USB Powered.
+    #UNKNOWN   : 6;
+    workingg=    lambda self:getbit(self.s2,7)    # This bit must be always TRUE (to chek functionality).
+    
+    
+    m1          = property(m1g)        
+    m2          = property(m2g)       
+    loft        = property(loftg)     
+    refin       = property(refing)
+    cw_ccw      = property(cw_ccwg)
+    emreset     = property(emresetg)
+    fullspeed   = property(fullspeedg)
+    areset      = property(aresetg)
+    
+    
+    run         = property(rung)
+    syncin      = property(syncing)
+    syncout     = property(syncoutg)
+    rottr       = property(rottrg)
+    rottrerr    = property(rottrerrg)
+    emreset     = property(emresetg)
+    trailer1    = property(trailer1g)
+    trailer2    = property(trailer2g)
+    
+    usbpow      = property(usbpowg)
+
+    working     = property(workingg) 
     
 class Serial:
     def __init__(self,data):
         st=array("B",data)
-        print data,st
+        #print data,st
         self.password=str(st[0:16])
         self.serial=str(st[16:])
 
@@ -258,118 +286,6 @@ class Mode(Easystruct):
     resbenc     = property(resbencg, resbencs)
     resenc      = property(resencg, resencs)
         
-class Mode1:
-    def __init__(self, mode=None,**kwargs):
-        
-        if isinstance(mode,tuple):
-            assert kwargs=={}, "if mode != None no kwargs can be given"
-            
-            st=array("B", mode)
-            fmt="=BBBI"
-            b0,b1,b2,self.synccount=struct.unpack(fmt,st)
-            
-            [self.pmode,
-            self.refinen,
-            self.resetd,
-            self.emreset,
-            self.tr1t,
-            self.tr2t,
-            self.rottrt,
-            self.trswap]=byte2bits(b0)
-            
-            [self.tr1en,
-            self.tr2en,
-            self.rettren,
-            self.rottrop,
-            self.butt1t,
-            self.butt2t,
-            self.butswap,
-            self.resetrt]=byte2bits(b1)
-            
-            [self.sncouten,
-            self.syncoutr,
-            self.syncinop,
-            self.syncopol,
-            self.encoder,
-            self.incvenc,
-            self.resbenc,
-            self.resenc]=byte2bits(b2)
-        else:
-            assert mode==None, "Assert can only be a tuple or none"
-            self.pmode=kwargs.pop("pmode",True)
-            self.refinen=kwargs.pop("refinen",True) #preg
-            self.resetd=kwargs.pop("resetd",False)
-            self.emreset=kwargs.pop("emreset",False)
-            self.tr1t=kwargs.pop("tr1t",False) # OK for CI stages
-            self.tr2t=kwargs.pop("tr2t",False) # OK for CI stages
-            self.rottrt=kwargs.pop("rottrt",False)
-            self.trswap=kwargs.pop("trswap",False)
-                       
-            ##########
-            
-            self.tr1en=kwargs.pop("tr1en",True) # This does not seem to matter
-            self.tr2en=kwargs.pop("tr2en",True) # This does not seem to matter
-            self.rettren=kwargs.pop("rettren",False)
-            self.rottrop=kwargs.pop("rottrop",False)
-            self.butt1t=kwargs.pop("butt1t",False)
-            self.butt2t=kwargs.pop("butt2t",False)
-            self.butswap=kwargs.pop("butswap",False)
-            self.resetrt=kwargs.pop("resetrt",False)
-            
-            #############
-                     
-            self.sncouten=kwargs.pop("sncouten",True)
-            self.syncoutr=kwargs.pop("syncoutr",False)
-            self.syncinop=kwargs.pop("syncinop",True)
-            self.syncopol=kwargs.pop("syncopol",False)
-            self.encoder=kwargs.pop("encoder",False) # Encoderen
-            self.incvenc=kwargs.pop("incvenc",False) #Encoderinv
-            self.resbenc=kwargs.pop("resbenc",False)
-            self.resenc=kwargs.pop("resenc",False)
-            
-            ##############
-            
-            self.synccount=kwargs.pop("synccount",4)
-        
-        assert kwargs=={}, "invalid kwargs given "+str(kwargs)
-        #~ 
-        #~ 
-    def tobuffer(self):
-        fmt="=BBBI"
-        
-        b0=tobyte([self.pmode,
-                       self.refinen,
-                       self.resetd,
-                       self.emreset,
-                       self.tr1t,
-                       self.tr2t,
-                       self.rottrt,
-                       self.trswap])
-                       
-        b1=tobyte([self.tr1en,
-                       self.tr2en,
-                       self.rettren,
-                       self.rottrop,
-                       self.butt1t,
-                       self.butt2t,
-                       self.butswap,
-                       self.resetrt])
-        
-        b2=tobyte([self.sncouten,
-                       self.syncoutr,
-                       self.syncinop,
-                       self.syncopol,
-                       self.encoder,
-                       self.incvenc,
-                       self.resbenc,
-                       self.resenc])
-        
-        buf=struct.pack(fmt, b0, b1, b2, pack_dword(self.synccount))
-        
-        return buf
-
-
-
 #~ typedef	struct	_MODE_PACKET	// 7 bytes;
 #~ {
 	#~ // Byte 0:

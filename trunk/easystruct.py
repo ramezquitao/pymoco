@@ -1,4 +1,5 @@
 import struct
+from array import array
 class Easystruct(object):
     
     def __init__(self, structdef, buf=None, checkargs=True, **kwargs):
@@ -42,7 +43,8 @@ class Easystruct(object):
         """
         Fill the attributes using the values given in buf
         """
-        
+        if isinstance(buf,tuple):
+            buf=array("B",buf)
         upk=struct.unpack(self.fmt,buf)
         
         for val,attr in zip(upk,self.structdef):

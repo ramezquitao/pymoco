@@ -147,20 +147,20 @@ class Standa:
     
     def get_current_position(self):
         st=self.get_state()
-        return st.cur_pos
+        return st.curpos
         
     def _fpark(self):
         """If any of the limit switches is pressed, move slowly the translation
          stage until they are not"""
         
         ST=self.get_state()
-        cp=ST.cur_pos
+        cp=ST.curpos
         
         # The trailer close to the motor is pressed
         if ST.trailer2:
             while any(self.get_trailer()):
                 ST=self.get_state()
-                cp=ST.cur_pos
+                cp=ST.curpos
                 self.move(cp-10000,div=8,speed=500)
                 self.wait_nt()
             self.stop()
@@ -170,7 +170,7 @@ class Standa:
         elif ST.trailer1:
             while any(self.get_trailer()):
                 ST=self.get_state()
-                cp=ST.cur_pos
+                cp=ST.curpos
                 self.move(cp+10000,div=8,speed=500)
                 self.wait_nt()
             self.stop()
