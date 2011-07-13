@@ -97,12 +97,14 @@ class Standa:
         wValue=  0x0000
         wIndex=  0x0000
         wLength= 0x000B
+        print "Entra"
         data=self.udev.controlMsg( requestType=bRequestType, 
                                    request=bRequest,
                                    buffer=wLength,
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
+        print "sale",len(data)
         return State(data, dev_version=self.version) 
         
     def stop(self):
@@ -300,6 +302,7 @@ class Standa:
         
         assert isinstance(mode,Mode),"mode must be an instance of the Mode class"
         
+        self.mode=mode
         bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
         bRequest      = 0x81
         wLength       = 0x0003

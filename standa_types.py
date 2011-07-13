@@ -149,7 +149,116 @@ class EncoderState:
         fmt="=II"
         self.e_cur_pos, self.enc_pos= struct.unpack(fmt,st)
 
-class Mode:
+class Mode(Easystruct):
+    def __init__(self, modebuf=None, **kwargs):
+        structdef=[ ("b0","B",       0x01, None, None), 
+                    ("b1","B",       0x03, None, None), 
+                    ("b2","B",       0x05, None, None),
+                    ("synccount","I",0x04, pack_dword, pack_dword),
+                    ]
+        Easystruct.__init__(self,structdef,modebuf,checkargs=False,**kwargs)
+        for key in kwargs.keys():
+                if hasattr(self,key):
+                    setattr(self,key,kwargs[key])
+                    kwargs.pop[key]
+        
+    def p0bs(self,bitn,bitv):
+        mask= 1<<bitn
+        if bitv: self.p0 = self.p0 | mask
+        else:self.p0=self.p0 & ~mask
+    
+    def p1bs(self,bitn,bitv):
+        mask= 1<<bitn
+        if bitv: self.p1 = self.p1 | mask
+        else:self.p1=self.p1 & ~mask
+    
+    def p2bs(self,bitn,bitv):
+        mask= 1<<bitn
+        if bitv: self.p2 = self.p2 | mask
+        else:self.p2=self.p2 & ~mask
+        
+    pmodeg  =   lambda self: getbit(self.b0,0) 
+    refineng=   lambda self: getbit(self.b0,1)
+    resetdg =   lambda self: getbit(self.b0,2)
+    emresetg=   lambda self: getbit(self.b0,3)
+    tr1tg   =   lambda self: getbit(self.b0,4)
+    tr2tg   =   lambda self: getbit(self.b0,5)
+    rottrtg =   lambda self: getbit(self.b0,6)
+    trswapg =   lambda self: getbit(self.b0,7)
+
+    tr1eng  =   lambda self: getbit(self.b1,0)
+    tr2eng  =   lambda self: getbit(self.b1,1)
+    rettreng=   lambda self: getbit(self.b1,2)
+    rottropg=   lambda self: getbit(self.b1,3)
+    butt1tg =   lambda self: getbit(self.b1,4)
+    butt2tg =   lambda self: getbit(self.b1,5)
+    butswapg=   lambda self: getbit(self.b1,6)
+    resetrtg=   lambda self: getbit(self.b1,7)
+
+    sncouteng=   lambda self: getbit(self.b2,0)
+    syncoutrg=   lambda self: getbit(self.b2,1)
+    syncinopg=   lambda self: getbit(self.b2,2)
+    syncopolg=   lambda self: getbit(self.b2,3)
+    encoderg =   lambda self: getbit(self.b2,4)
+    incvencg =   lambda self: getbit(self.b2,5)
+    resbencg =   lambda self: getbit(self.b2,6)
+    resencg  =   lambda self: getbit(self.b2,7)
+    
+    pmodes  =   lambda self,y: p0bs(self,0,y)  
+    refinens=   lambda self,y: p0bs(self,1,y)  
+    resetds =   lambda self,y: p0bs(self,2,y)  
+    emresets=   lambda self,y: p0bs(self,3,y)
+    tr1ts   =   lambda self,y: p0bs(self,4,y)
+    tr2ts   =   lambda self,y: p0bs(self,5,y)
+    rottrts =   lambda self,y: p0bs(self,6,y)
+    trswaps =   lambda self,y: p0bs(self,7,y)
+
+    tr1ens  =   lambda self,y: p1bs(self,0,y)
+    tr2ens  =   lambda self,y: p1bs(self,1,y)
+    rettrens=   lambda self,y: p1bs(self,2,y)
+    rottrops=   lambda self,y: p1bs(self,3,y)
+    butt1ts =   lambda self,y: p1bs(self,4,y)
+    butt2ts =   lambda self,y: p1bs(self,5,y)
+    butswaps=   lambda self,y: p1bs(self,6,y)
+    resetrts=   lambda self,y: p1bs(self,7,y)
+
+    sncoutens=   lambda self,y: p2bs(self,0,y)
+    syncoutrs=   lambda self,y: p2bs(self,1,y)
+    syncinops=   lambda self,y: p2bs(self,2,y)
+    syncopols=   lambda self,y: p2bs(self,3,y)
+    encoders =   lambda self,y: p2bs(self,4,y)
+    incvencs =   lambda self,y: p2bs(self,5,y)
+    resbencs =   lambda self,y: p2bs(self,6,y)
+    resencs  =   lambda self,y: p2bs(self,7,y)
+    
+    pmode       = property(pmodeg, pmodes)
+    refinen     = property(refineng, refinens)
+    resetd      = property(resetdg, resetds)
+    emreset     = property(emresetg, emresets)
+    tr1t        = property(tr1tg, tr1ts)
+    tr2t        = property(tr2tg, tr2ts)
+    rottrt      = property(rottrtg, rottrts)
+    trswap      = property(trswapg, trswaps)
+
+    tr1en       = property(tr1eng, tr1ens)
+    tr2en       = property(tr2eng, tr2ens)
+    rettren     = property(rettreng, rettrens)
+    rottrop     = property(rottropg, rottrops)
+    butt1t      = property(butt1tg, butt1ts)
+    butt2t      = property(butt2tg, butt2ts)
+    butswap     = property(butswapg, butswaps)
+    resetrt     = property(resetrtg, resetrts)
+
+    sncouten    = property(sncouteng, sncoutens)
+    syncoutr    = property(syncoutrg, syncoutrs)
+    syncinop    = property(syncinopg, syncinops)
+    syncopol    = property(syncopolg, syncopols)
+    encoder     = property(encoderg, encoders)
+    incvenc     = property(incvencg, incvencs)
+    resbenc     = property(resbencg, resbencs)
+    resenc      = property(resencg, resencs)
+        
+class Mode1:
     def __init__(self, mode=None,**kwargs):
         
         if isinstance(mode,tuple):
@@ -164,7 +273,7 @@ class Mode:
             self.resetd,
             self.emreset,
             self.tr1t,
-            self.tr2r,
+            self.tr2t,
             self.rottrt,
             self.trswap]=byte2bits(b0)
             
@@ -192,7 +301,7 @@ class Mode:
             self.resetd=kwargs.pop("resetd",False)
             self.emreset=kwargs.pop("emreset",False)
             self.tr1t=kwargs.pop("tr1t",False) # OK for CI stages
-            self.tr2r=kwargs.pop("tr2r",False) # OK for CI stages
+            self.tr2t=kwargs.pop("tr2t",False) # OK for CI stages
             self.rottrt=kwargs.pop("rottrt",False)
             self.trswap=kwargs.pop("trswap",False)
                        
@@ -223,8 +332,8 @@ class Mode:
             self.synccount=kwargs.pop("synccount",4)
         
         assert kwargs=={}, "invalid kwargs given "+str(kwargs)
-        
-        
+        #~ 
+        #~ 
     def tobuffer(self):
         fmt="=BBBI"
         
@@ -233,7 +342,7 @@ class Mode:
                        self.resetd,
                        self.emreset,
                        self.tr1t,
-                       self.tr2r,
+                       self.tr2t,
                        self.rottrt,
                        self.trswap])
                        
@@ -338,7 +447,7 @@ def goto_data(dest_pos ,speed=500 ,
 #~ } GO_TO_PACKET, * PGO_TO_PACKET, * LPGO_TO_PACKET;
 #~ 
 #~ 
-
+    
 
 class Parameters(Easystruct):
 

@@ -1,7 +1,7 @@
 import struct
-class Easystruct:
+class Easystruct(object):
     
-    def __init__(self, structdef, buf=None, **kwargs):
+    def __init__(self, structdef, buf=None, checkargs=True, **kwargs):
         """
         structdef a list of tuples containing:
         (att_name,att_type", def_val, class2buf, buf2class)
@@ -28,10 +28,14 @@ class Easystruct:
             assert kwargs=={}, "if kwargs are given, buf must be None"
             self.fillfrombuf(buf)
         else:
-            #fill the values from kwargs
+            #fill the values from kwargs, only the values that belong to the new class
+            #do not create new arguments
             for key in kwargs.keys():
-                assert hasattr(self,key), "Triying to asign a non existing attribute to class "+ str(self.__class__)
-                setattr(self,key,kwargs[key])
+                if hasattr(self,key):
+                    setattr(self,key,kwargs[key])
+                    kwargs.pop[key]
+        if checkargs:
+            assert  len(kwargs)==0, "Unknown arguments given"+str(kwargs)
             
     
     def fillfrombuf(self,buf):
