@@ -48,7 +48,7 @@ def find_serials():
                 ser.append(get_serial(udev))
     return ser
 
-class Standa:
+class Standa(object):
     def __init__(self,serial):
         """
         Class used to control the Standa 8SMC1 USB stepper motor controller
@@ -304,7 +304,7 @@ class Standa:
         
         assert isinstance(mode,Mode),"mode must be an instance of the Mode class"
         
-        self.mode=mode
+        
         bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
         bRequest      = 0x81
         wLength       = 0x0003
@@ -319,11 +319,10 @@ class Standa:
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
+        self.__mode__=mode
         return data
 
     def set_parameters(self,para):
-        
-        self.parameters=para
         
         bRequestType = USB_DIR_OUT | USB_RECIP_DEVICE | USB_TYPE_VENDOR
         bRequest      = 0x83
@@ -337,7 +336,24 @@ class Standa:
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
+        self.__parameters__=para
         return data
+
+    # As is not possible to read from the driver board to get the current 
+    # mode and the current Parameters, all the configuration attributes of the class
+    # will be made python properties. This allow to easily keep synchronized
+    # the __mode__, and the __parameters__ buffers with the info
+    # recorded on the board 
+    
+    # Begin definition of properties
+    
+    # curpos : Indicates the position of the stage in steps
+    # This is a wrapper to get_current_position and set_current_position
+    curpos = property(get_current_position, set_current_position)
+    
+    # End definition of properties
+
+
 ########## Methods abobe are ready
    
     

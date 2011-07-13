@@ -108,7 +108,7 @@ class State(Easystruct):
             return v
 
         
-        structdef=[ ("curpos"   ,"i", 0x00, None, None), 
+        structdef=[ ("curpos"   ,"i", 0x00, lambda x: x*8, lambda x: x/8), 
                     ("temp"     ,"H", 0x00, tempfunc, tempfunci),
                     ("s0"       ,"B", 0x00, None, None), 
                     ("s1"       ,"B", 0x00, None, None),
@@ -339,8 +339,9 @@ def goto_data(dest_pos ,speed=500 ,
         m1,m2= {1:(0,0),2:(1,0),4:(0,1),8:(1,1)}.get(div,(1,1))
 
         fmt="iHB"
+        p=dest_pos*8
         buf=struct.pack(fmt,
-                          dest_pos,
+                          p,
                           timer_period,
                           m1+2*m2+4*def_dir+8*loft_en+
                           16*sl_strt+32*w_sync+64*sync_out+128*force_loft)

@@ -62,7 +62,6 @@ class Easystruct(object):
             else:
                 bl.append(mod(getattr(self, attr)))
                 
-        print len(bl),
         buf=struct.pack(self.fmt, *bl)
         return buf
         
