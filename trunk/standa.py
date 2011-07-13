@@ -97,14 +97,12 @@ class Standa:
         wValue=  0x0000
         wIndex=  0x0000
         wLength= 0x000B
-        print "Entra"
         data=self.udev.controlMsg( requestType=bRequestType, 
                                    request=bRequest,
                                    buffer=wLength,
                                    value=wValue, 
                                    index=wIndex,
                                    timeout= 1000)
-        print "sale",len(data)
         return State(data, dev_version=self.version) 
         
     def stop(self):
@@ -134,13 +132,17 @@ class Standa:
         wValue   = second_word(buf) #(pos/0x10000) & 0xFFFF #SECOND_WORD ( kern_buf );
         
         #
-        self.udev.controlMsg(requestType=bRequestType, request=bRequest,buffer=buf[4:],value=wValue, index=wIndex,timeout= 1000)
+        
+        
+        data=self.udev.controlMsg(requestType=bRequestType, request=bRequest,buffer=buf[4:],value=wValue, index=wIndex,timeout= 1000)
 
+        
     def get_trailer(self):
         '''
         Check if the limit switches are pressed
         '''
         st=self.get_state()
+        
         return (st.trailer1,st.trailer2)
     
     def get_current_position(self):
@@ -197,7 +199,7 @@ class Standa:
         self.move(move,div=div,speed=speed)
         self.wait(0.1) # wait checking for the trailers
    
-        self.move(0,div=8,speed=128)
+        self.move(-move,div=8,speed=128)
 
         while any(self.get_trailer()):    
             pass
@@ -318,18 +320,7 @@ class Standa:
                                    index=wIndex,
                                    timeout= 1000)
         return data
-             
-########## Methods abobe are ready
-   
-    
 
-
-    
-    
-
-    
-
-        
     def set_parameters(self,para):
         
         self.parameters=para
@@ -347,7 +338,9 @@ class Standa:
                                    index=wIndex,
                                    timeout= 1000)
         return data
-        
+########## Methods abobe are ready
+   
+    
     #def get_parameters(self):
         
         
