@@ -118,7 +118,8 @@ class Standa(object):
         Data=()
         self.udev.controlMsg(requestType=bRequestType,request=bRequest,buffer=Data,value=wValue,index=wIndex,timeout=1000)
     
-    def move(self,pos, speed=500,div=1, sl_start=True):#L=128,I=0,div=8):#Velocidad 625 , divisor: 8,4,2,1, carro:serial
+    def move(self,pos, speed=500,div=1, def_dir=False, loft_en=False, sl_strt=True, w_sync=False, \
+            sync_out=False, force_loft=False):#L=128,I=0,div=8):#Velocidad 625 , divisor: 8,4,2,1, carro:serial
         '''
         Move to a given position
         '''
@@ -126,7 +127,8 @@ class Standa(object):
         bRequest = 0x80;
         wLength  = 0x0003 
         
-        buf=goto_data(pos,div=div,speed=speed, sl_strt=sl_start)
+        buf=goto_data(pos,div=div,speed=speed, def_dir=def_dir, loft_en=loft_en, sl_strt=sl_strt,\
+                      w_sync=w_sync,sync_out=sync_out,force_loft=force_loft)
         
         wIndex   = first_word(buf)  #pos & 0xFFFF            #FIRST_WORD  ( kern_buf );
         wValue   = second_word(buf) #(pos/0x10000) & 0xFFFF #SECOND_WORD ( kern_buf );

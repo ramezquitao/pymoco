@@ -327,6 +327,8 @@ def goto_data(dest_pos ,speed=500 ,
                  w_sync =False,
                  sync_out=False,
                  force_loft=False):
+                     
+                
         
         #The sorted is used to clip the speed in the 16,5000 range
         
